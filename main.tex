@@ -1,0 +1,535 @@
+% !TeX program = xelatex
+% Formal conceptual analysis. Figures are editable TikZ; no concrete examples.
+% Source baseline: AP2 documentation v0.2, repository commit 019561a.
+\documentclass[UTF8,fontset=fandol,a4paper,zihao=-4]{ctexart}
+\usepackage[left=18mm,right=18mm,top=19mm,bottom=18mm,headheight=13pt,headsep=6mm]{geometry}
+\usepackage{amsmath,amssymb,graphicx,xcolor,tikz,caption,array,booktabs,fancyhdr}
+\usetikzlibrary{arrows.meta,positioning,calc,backgrounds,fit}
+\usepackage[colorlinks=true,urlcolor=teal,linkcolor=teal]{hyperref}
+\definecolor{ink}{HTML}{19324A}
+\definecolor{blue}{HTML}{32658D}
+\definecolor{teal}{HTML}{247A76}
+\definecolor{risk}{HTML}{B35C34}
+\definecolor{muted}{HTML}{5B6C7B}
+\definecolor{line}{HTML}{C6D1DA}
+\definecolor{wash}{HTML}{F2F6FA}
+\definecolor{greenwash}{HTML}{EDF6F3}
+\definecolor{riskwash}{HTML}{FCF2EA}
+\definecolor{graywash}{HTML}{F5F6F7}
+\hypersetup{pdftitle={AP2 框架及相关衍生问题研究},
+ pdfauthor={Anonymous Authors},
+ pdfsubject={基于 node 与 transpath 的分层安全分析}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}
+\renewcommand{\familydefault}{\sfdefault}
+\renewcommand{\CJKfamilydefault}{\CJKsfdefault}
+\AtBeginDocument{\fontsize{10.8}{16.1}\selectfont\color{ink}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\fontsize{8}{10}\selectfont\color{muted}AP2 框架及相关衍生问题研究}
+\fancyhead[R]{\fontsize{8}{10}\selectfont\color{muted}基于 node 与 transpath 的分层安全分析}
+\fancyfoot[L]{\fontsize{8}{10}\selectfont\color{muted}协议依据：AP2 v0.2 / 019561a}
+\fancyfoot[R]{\fontsize{9}{11}\selectfont\color{teal}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0pt}
+\captionsetup{font=small,labelfont=bf,labelsep=quad,skip=5pt,
+ justification=raggedright,singlelinecheck=false,hypcap=false}
+\newcommand{\PageTitle}[3]{%
+  \pdfbookmark[0]{#1 #2}{section#1}%
+  {\color{teal}\fontsize{12}{15}\selectfont\bfseries #1\quad #2\par}
+  \vspace{2pt}{\fontsize{22}{28}\selectfont\bfseries #3\par}\vspace{7pt}}
+\newcommand{\Topic}[2]{\vspace{4pt}{\color{teal}\bfseries #1}\quad #2\par}
+\newcommand{\Note}[1]{{\fontsize{9}{13.1}\selectfont\color{muted}#1\par}}
+\newcommand{\Source}[1]{\vspace{4pt}\Note{依据：#1。参考文献见第 9 页。}}
+\newcommand{\Code}[1]{\texttt{#1}}
+\newcommand{\FigureCaption}[2]{\captionof{figure}{#2}\label{#1}}
+\newcommand{\DocRef}[1]{\textsuperscript{\color{teal}[#1]}}
+\newcommand{\Link}[2]{\href{#1}{#2}}
+\tikzset{
+  every node/.style={font=\sffamily\fontsize{9.7}{12.5}\selectfont,text=ink,align=center},
+  box/.style={draw=line,fill=wash,rounded corners=2pt,line width=.7pt,
+    minimum height=.82cm,inner sep=5pt,align=center},
+  role/.style={box,draw=blue!65,minimum width=2.6cm},
+  safe/.style={box,draw=teal!70,fill=greenwash},
+  danger/.style={box,draw=risk!65,fill=riskwash},
+  frame/.style={draw=line,rounded corners=3pt,line width=.7pt},
+  boundary/.style={draw=teal!65,dashed,rounded corners=3pt,line width=.7pt},
+  arrow/.style={-{Stealth[length=2mm,width=1.4mm]},draw=blue,line width=.85pt},
+  proof/.style={-{Stealth[length=2mm,width=1.4mm]},draw=teal,line width=.85pt},
+  attack/.style={-{Stealth[length=2mm,width=1.4mm]},draw=risk,line width=.85pt},
+  observe/.style={-{Stealth[length=1.8mm,width=1.3mm]},draw=risk,dashed,line width=.75pt},
+  small/.style={font=\sffamily\fontsize{9}{11.7}\selectfont},
+  tag/.style={fill=white,inner xsep=3pt,inner ysep=2pt,font=\sffamily\fontsize{9}{11.7}\selectfont},
+  heading/.style={anchor=west,font=\sffamily\bfseries\fontsize{10.5}{13}\selectfont},
+  pair/.style={{Stealth[length=1.8mm,width=1.2mm]}-{Stealth[length=1.8mm,width=1.2mm]},draw=blue,line width=.8pt}
+}
+\begin{document}
+\pdfbookmark[0]{01 总体框架}{section01}
+\thispagestyle{plain}
+\begin{center}
+  {\fontsize{23}{30}\selectfont\bfseries AP2 框架及相关衍生问题研究\par}
+  \vspace{5pt}
+  {\fontsize{12}{16}\selectfont\color{teal}基于 node 与 transpath 的分层安全分析\par}
+  \vspace{8pt}
+  {\fontsize{9.4}{12}\selectfont Anonymous Authors\par}
+  \vspace{3pt}{\fontsize{9.4}{12}\selectfont 2026年10月 -- 2027年2月\par}
+\end{center}
+\vspace{4pt}
+{\color{teal}\bfseries 01\quad 总体框架\par}
+本文研究 AP2 交易系统中，参与节点（\textbf{node}）与有向传输路径（\textbf{transpath}）
+在不同对手能力和观察条件下形成的安全风险。
+分析依次确定系统边界、对象范围、对手能力与可见信息，再按受损的安全属性归类攻击机制。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,7.8);
+\node[heading] at (.2,7.42) {保护目标};
+\foreach \x/\t in {2.1/授权与执行一致,6.45/身份与内容完整,10.8/保密与隐私,15.15/状态与可用性}
+  \node[safe,text width=3.4cm,minimum height=.75cm] at (\x,6.65) {\t};
+\draw[draw=line] (.3,5.92)--(16.9,5.92);
+\node[heading] at (.2,5.5) {分析顺序};
+\node[role,text width=3.25cm,minimum height=2.4cm] (s1) at (2.1,3.8)
+  {\textbf{对象范围}\\[5pt]节点 / 传输路径\\角色、消息与信任边界\\[3pt]\textcolor{teal}{第 2 页}};
+\node[role,text width=3.25cm,minimum height=2.4cm] (s2) at (6.45,3.8)
+  {\textbf{对手能力}\\[5pt]主动 / 被动\\行为控制与观察权限\\[3pt]\textcolor{teal}{第 3 页}};
+\node[role,text width=3.25cm,minimum height=2.4cm] (s3) at (10.8,3.8)
+  {\textbf{观察条件}\\[5pt]通道 / 端点 / 披露\\可见字段、元数据\\[3pt]\textcolor{teal}{第 4 页}};
+\node[role,text width=3.25cm,minimum height=2.4cm] (s4) at (15.15,3.8)
+  {\textbf{攻击归类}\\[5pt]七类安全边界\\机制、条件与核验目标\\[3pt]\textcolor{teal}{第 5--8 页}};
+\draw[arrow] (s1)--(s2);\draw[arrow] (s2)--(s3);\draw[arrow] (s3)--(s4);
+\node[box,fill=graywash,text width=16cm,minimum height=1.25cm] at (8.6,1.3)
+  {\textbf{各层共同记录}\quad 协议已有机制\quad /\quad 部署信任假设\quad /\quad 残余风险\quad /\quad 核验要求};
+\draw[proof] (8.6,2.5)--(8.6,2.01);
+\node[small,text=muted] at (8.6,.24)
+  {类别索引：A 授权\quad B 语义\quad C 传输\quad D 凭证\quad E 状态\quad F 隐私\quad G 环境};
+\end{tikzpicture}
+\FigureCaption{fig:overview}{从保护目标到分类汇总的分析结构。对象、能力与观察条件共同决定风险，不能仅凭某一项标签判断攻击是否成立。}
+\end{center}
+
+\Topic{协议基线}{AP2 已规定签名授权、密钥绑定、交易哈希绑定、选择性披露及相应核验规则。
+其作用是将用户要求锁定到 AP2 授权凭证中，并在交易执行时逐项核验；具体保护强度取决于约束表达、密码实现和核验执行是否正确。\DocRef{P1--P3}}
+\Topic{研究边界}{本文采用用户不在场的授权流程作为分析基线，并纳入模型、工具和部署依赖。
+图中的角色可由不同实体承担，也可合并部署；合并部署不会消除其逻辑职责与信任边界。}
+\Topic{结论性质}{所列内容是有条件的威胁分析，不是已复现漏洞清单。
+分类用于检查主要安全边界；风险覆盖程度仍取决于实际部署、权限配置、消息类型与对手组合。}
+\Source{AP2 规范、授权模型与安全考虑 [P1--P3]}
+
+\clearpage
+\PageTitle{02}{对象范围}{先划定节点，再展开每一次传输}
+\textbf{node 是处理、保存或决定信息的信任主体；transpath 是两个主体之间的一次有向逻辑传递。}
+同一消息经过代理、网关或其他可读取内容的中间主体时，应继续拆分节点与路径。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,10.2);
+\draw[boundary,fill=greenwash!45] (.25,7.65) rectangle (16.95,9.95);
+\node[heading,text=teal] at (.55,9.6) {授权边界：可信交互与授权签署};
+\node[safe,text width=3.3cm] (ts) at (3.1,8.5) {用户 / 可信交互面 TS};
+\node[safe,text width=4.1cm] (signer) at (11.9,8.5) {授权提供方 / 根签名器};
+\draw[proof] (ts)--(signer) node[midway,above,tag] {确认与签署请求};
+\node[role,text width=2.85cm] (sa) at (3.1,6.25) {购物智能体 SA};
+\node[role,text width=2.85cm] (m) at (8.65,6.25) {商户 M};
+\node[role,text width=2.85cm] (cp) at (14.2,6.25) {凭据提供方 CP};
+\node[role,text width=3.25cm] (mpp) at (8.65,3.9) {商户支付处理方 MPP};
+\node[role,text width=2.85cm] (net) at (14.2,3.9) {支付网络 / 发卡侧};
+\draw[pair] (ts.south)--(sa.north);
+\draw[proof] (signer.south)--(11.9,7.12)--(3.1,7.12)--(sa.north);
+\node[tag] at (6.3,7.12) {授权凭证};
+\draw[pair] (sa)--(m) node[midway,above,tag] {结账交互};
+\draw[pair] (sa.south)--(3.1,5.05)--(14.2,5.05)--(cp.south);
+\node[tag] at (6.3,5.05) {支付授权与凭据};
+\draw[pair,preaction={draw=white,line width=3pt}] (m.south)--(mpp.north);
+\draw[pair] (cp.south east)--(16.0,5.5)--(16.0,3.9)--(net.east);
+\draw[pair] (mpp)--(net) node[midway,above,tag] {支付处理};
+\draw[draw=line,dashed] (.3,2.95)--(16.9,2.95);
+\node[box,fill=graywash,text width=15.9cm,minimum height=1.45cm] at (8.6,1.7)
+  {\textbf{部署扩展节点}\quad 按实际依赖接入上述角色\\[4pt]
+   模型推理\quad 工具 / MCP\quad 事件与调度\quad 受托智能体\\
+   身份与密钥\quad 状态 / 日志 / 记忆\quad 代理 / 宿主\quad 构建 / 配置来源};
+\end{tikzpicture}
+\FigureCaption{fig:scope}{AP2 角色关系与扩展对象。双向线仅表示交互关系，具体分析时必须拆为不同方向的 transpath；本图不是完整报文时序。授权区域采用可信授权提供方模型，支付网络分支按支付轨道确定。}
+\end{center}
+
+\Topic{有向对象模型}{将部署记为有向多重图 $G=(V,E)$，其中 $V$ 为节点集合，
+$e=(u,v,m,c)\in E$ 表示从节点 $u$ 到节点 $v$、经通道 $c$ 传递消息类型 $m$。
+请求、响应、回执、通知与状态读写分别建模；同一对节点之间可存在多条不同的逻辑路径。}
+\Topic{范围划分}{业务层覆盖授权、结账、凭据交付、支付与回执；智能体层覆盖推理、工具、事件和委派；
+基础设施层覆盖身份、密钥、存储、网关、宿主和构建来源。节点内部若存在独立权限或密钥边界，也应继续拆分。}
+\Topic{记录要求}{每条路径至少记录发送方、接收方、消息内容、保护方式与验证责任；
+每个节点至少记录持有数据、可用密钥、可调用权限与依赖状态。
+图形的角色分组用于阅读，安全检查仍逐节点、逐方向、逐消息类型进行。}
+\Source{AP2 角色、流程、授权及实现考虑 [P1, P2, P4, P5]；部署扩展为本文的分析范围}
+
+\clearpage
+\PageTitle{03}{对手能力}{对象位置与主动、被动是两条独立轴}
+\textbf{被动对手保持所建模协议行为，利用可获得的信息进行观察、保留或关联；主动对手能够偏离协议行为。}
+对手控制一个节点，并不自动意味着控制其所有相邻节点或所有传输通道。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,10.8);
+\node[heading] at (.25,10.45) {被动：观察与推断};
+\node[heading,text=risk] at (9.0,10.45) {主动：改变行为或消息};
+\draw[frame,fill=wash!55] (.1,5.45) rectangle (8.35,9.95);
+\draw[frame,fill=riskwash!55] (8.85,5.45) rectangle (17.1,9.95);
+\draw[frame,fill=wash!55] (.1,.35) rectangle (8.35,4.95);
+\draw[frame,fill=riskwash!55] (8.85,.35) rectangle (17.1,4.95);
+\node[heading] at (.45,9.5) {node：诚实但好奇};
+\node[role,minimum width=2cm] (pn) at (4.2,8.15) {节点 N};
+\draw[arrow] (1.0,8.15)--(pn);\draw[arrow] (pn)--(7.35,8.15);
+\node[small] at (1.55,8.57) {输入};\node[small] at (6.85,8.57) {输出};
+\draw[observe] (pn.south)--(4.2,6.92);
+\node[small,text width=7cm] at (4.2,6.38) {保持协议行为\\读取已获授权的明文、状态与元数据};
+\node[heading,text=risk] at (9.2,9.5) {node：恶意参与方};
+\node[danger,minimum width=2cm] (an) at (12.95,8.15) {节点 N};
+\draw[arrow] (9.75,8.15)--(an);\draw[attack] (an)--(16.1,8.15);
+\node[small,text=risk] at (15.3,8.62) {可操纵输出};
+\node[small,text width=7cm] at (12.95,6.55) {改变内容、处理规则与状态\\可使用自己合法持有的身份与密钥};
+\node[heading] at (.45,4.5) {transpath：路径观察者};
+\node[box,minimum width=1.25cm] (ps) at (1.6,3.15) {$N_u$};
+\node[box,minimum width=1.25cm] (pr) at (6.8,3.15) {$N_v$};
+\draw[arrow] (ps)--(pr) node[midway,above,tag] {消息传输};
+\draw[observe] (4.2,3.07)--(4.2,2.05);
+\node[small,text width=7cm] at (4.2,1.35) {只观察该路径上可见的信息\\明文是否可见取决于通道与密钥条件};
+\node[heading,text=risk] at (9.2,4.5) {transpath：路径操纵者};
+\node[box,minimum width=1.25cm] (as) at (10.35,3.15) {$N_u$};
+\node[box,minimum width=1.25cm] (ar) at (15.55,3.15) {$N_v$};
+\draw[attack] (as)--(ar);
+\node[danger,minimum width=2.05cm,minimum height=.64cm] at (12.95,3.15) {干预传输};
+\node[small,text width=7cm] at (12.95,1.35) {尝试插入、替换、重放、阻断、延迟与重排\\不默认具有解密或伪造有效签名的能力};
+\end{tikzpicture}
+\FigureCaption{fig:adversaries}{四类基础对手能力。主动性描述能否改变系统行为，观察条件描述能够知道什么；两者必须分别说明。}
+\end{center}
+
+\Topic{能力不等于攻击成功}{主动路径对手可以干预传递，但正确的认证、加密与完整性保护会使部分篡改被拒绝。
+恶意节点则可能在保持签名有效的同时生成不真实或具有误导性的内容，因此不能以验签通过替代内容与授权核验。}
+\Topic{组合与串谋}{多个受控节点、多个受控路径可以组成联合对手。
+联合能力包括各方获得的数据、可执行权限以及相互配合的机会；不能仅将单点结论直接外推为多点安全结论。}
+\Topic{必要信任假设}{每项结论应指出仍诚实的授权来源、密钥保护组件、核验器和执行端。
+若保护某项属性所必需的组件全部被控制，就不能继续主张该属性由原有机制保证。}
+\Source{AP2 安全考虑与授权模型 [P2, P3]；TLS 和 JWT 安全边界 [S1, S3]}
+
+\clearpage
+\PageTitle{04}{观察条件与 C 类风险}{先确定可见信息，再判断泄露与篡改}
+\textbf{观察能力取决于加密终点、字段披露、密钥权限和本地状态。}
+下列四种条件描述不同观察位置，不构成简单的强弱排序；同一部署可同时存在多种条件。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,12.1);
+\foreach \y in {9.1,6.1,3.1,.1}
+ \draw[frame,fill=wash!55] (.1,\y) rectangle (17.1,\y+2.8);
+\node[heading] at (.4,11.5) {O1\quad 受保护的传输路径};
+\node[box,minimum width=1cm] (e11) at (1.15,10.25) {端点};
+\node[box,minimum width=1cm] (e12) at (5.75,10.25) {端点};
+\draw[arrow] (e11)--(e12);
+\node[safe,minimum height=.58cm,minimum width=1.85cm] at (3.45,10.25) {密文};
+\node[small,text=risk] at (3.45,9.55) {路径观察};
+\node[anchor=west,align=left,text width=9.35cm] at (7.15,10.35)
+ {可见：网络端点、长度、时序等残留元数据。\\[4pt]
+  正确加密的应用明文不能由纯路径观察直接获得。};
+\node[heading] at (.4,8.5) {O2\quad 未获保密保护的路径};
+\node[box,minimum width=1cm] (e21) at (1.15,7.25) {端点};
+\node[box,minimum width=1cm] (e22) at (5.75,7.25) {端点};
+\draw[arrow] (e21)--(e22);
+\node[danger,minimum height=.58cm,minimum width=1.85cm] at (3.45,7.25) {明文};
+\node[small,text=risk] at (3.45,6.55) {路径观察};
+\node[anchor=west,align=left,text width=9.35cm] at (7.15,7.35)
+ {可见：该路径实际传输的内容与元数据。\\[4pt]
+  内容即使附有签名，也不因此获得机密性。};
+\node[heading] at (.4,5.5) {O3\quad 在中间节点终止加密};
+\node[box,minimum width=.95cm] (e31) at (1.05,4.25) {上游};
+\node[danger,minimum width=1.5cm] (e32) at (3.45,4.25) {终止代理};
+\node[box,minimum width=.95cm] (e33) at (5.85,4.25) {下游};
+\draw[arrow] (e31)--(e32) node[midway,above,small] {TLS};
+\draw[arrow] (e32)--(e33) node[midway,above,small] {TLS};
+\node[small,text=risk] at (3.45,3.5) {节点可读明文};
+\node[anchor=west,align=left,text width=9.35cm] at (7.15,4.35)
+ {代理能读取其终止层解密后的内容。\\[4pt]
+  这是节点威胁；分段加密不等于应用层端到端保密。};
+\node[heading] at (.4,2.5) {O4\quad 应用端点及本地状态};
+\node[danger,text width=4.75cm,minimum height=.85cm] at (3.45,1.25)
+ {获授予的数据视图 / 状态};
+\node[anchor=west,align=left,text width=9.35cm] at (7.15,1.35)
+ {可见：合法获得的明文及本地可访问状态。\\[4pt]
+  密钥是否可见另由隔离和权限决定；诚实执行也可能伴随隐私推断。};
+\end{tikzpicture}
+\FigureCaption{fig:views}{观察位置决定信息可见性。密文传输、节点解密与端点持有数据是不同的安全条件，不能合并成笼统的“路径泄露”。}
+\end{center}
+
+\Topic{C：传输与会话}{主动威胁包括身份冒用、通道降级、消息干预与会话混淆；其可行性受认证和完整性校验限制。
+连接层的完整性保护不替代应用层的授权检查、请求新鲜性、业务去重与状态一致性。
+丢弃、延迟和流量分析也不会仅因内容加密而消失。\DocRef{S1}}
+\Topic{三种机制的边界}{加密限制未授权读取；签名验证来源和内容完整性；选择性披露减少交给接收方的字段。
+三者不能相互替代，也不能自动阻止接收方保存、串谋或关联已经获得的信息。\DocRef{P3, S1, S2}}
+\Source{AP2 安全与隐私考虑 [P3]；TLS 1.3、SD-JWT 和 JWT 安全建议 [S1--S3]}
+
+\clearpage
+\PageTitle{05}{A / B 类风险}{授权语义与智能体行为分别受约束}
+\textbf{签名保护已表达的内容，不能证明内容忠实于用户意图。}
+授权形成过程需要保证来源、表达与确认的一致性；运行过程需要防止外部内容获得本不应拥有的指令权限。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,10.3);
+\node[heading] at (.2,9.9) {A\quad 从用户要求到可核验授权};
+\node[role,text width=2.65cm,minimum height=1.1cm] (intent) at (1.65,8.5) {用户要求\\意图与限制};
+\node[role,text width=2.65cm,minimum height=1.1cm] (constraint) at (5.65,8.5) {结构化约束\\明确可判定条件};
+\node[safe,text width=2.65cm,minimum height=1.1cm] (confirm) at (9.65,8.5) {可信确认\\展示与签署一致};
+\node[safe,text width=2.65cm,minimum height=1.1cm] (mandate) at (13.65,8.5) {开放授权\\约束与密钥绑定};
+\draw[arrow] (intent)--(constraint);\draw[arrow] (constraint)--(confirm);\draw[proof] (confirm)--(mandate);
+\node[small,text width=16cm,text=muted] at (8.6,7.15)
+ {语义表达是否充分，必须单独评估；密码学只约束已编码并绑定的内容。};
+\draw[draw=line] (.25,6.55)--(16.95,6.55);
+\node[heading] at (.2,6.1) {B\quad 从外部内容到受限执行};
+\draw[frame,fill=wash!60] (3.3,2.65) rectangle (9.85,5.45);
+\draw[boundary,fill=greenwash!55] (10.25,.4) rectangle (17.05,5.45);
+\node[small,text=muted] at (6.58,5.1) {生成与决策区域};
+\node[small,text=teal] at (13.65,5.1) {独立核验与执行区域};
+\node[danger,text width=2.1cm,minimum height=1.05cm] (input) at (1.4,4.0) {外部输入\\不可信内容};
+\node[role,text width=2.1cm,minimum width=0pt,minimum height=1.05cm] (agent) at (4.95,4.0) {Agent\\推理与计划};
+\node[role,text width=2.1cm,minimum width=0pt,minimum height=1.05cm] (action) at (8.25,4.0) {候选行动\\尚未获准};
+\node[safe,text width=2.1cm,minimum height=1.05cm] (gate) at (11.85,4.0) {确定性核验\\逐项检查约束};
+\node[safe,text width=2.1cm,minimum height=1.05cm] (exec) at (15.55,4.0) {受限执行\\权限 / 对象};
+\draw[attack] (input)--(agent);\draw[arrow] (agent)--(action);\draw[arrow] (action)--(gate);
+\draw[proof] (gate)--(exec) node[midway,above,tag] {通过};
+\node[danger,text width=2.1cm,minimum height=.73cm] (reject) at (11.85,1.6) {拒绝 / 中止};
+\draw[attack] (gate)--(reject) node[midway,right,tag] {失败或未知};
+\draw[proof] (mandate.east)--(16.75,8.5)--(16.75,5.8)--(11.85,5.8)--(gate.north);
+\node[tag,text=teal] at (14.35,5.8) {约束依据};
+\node[small,align=left,text width=5.8cm,text=muted] at (5.85,1.55)
+ {输入中的文本、描述与返回值\\不能直接成为授权来源。};
+\end{tikzpicture}
+\FigureCaption{fig:semantics}{授权形成与行为执行的两道边界。核验器只能强制实施已明确定义的规则；未被形式化的语义要求仍需独立处理。图中的执行隔离是部署要求，不由协议格式自动产生。}
+\end{center}
+
+\Topic{A：授权来源与意图一致性}{风险包括授权内容替换、确认界面与签署内容不一致、身份或授权来源混淆，
+以及约束遗漏造成的权限扩大。被动观察还可能暴露用户偏好、授权范围与身份关联。
+需核对“要求、展示、签署、执行”的一致性，并保护根签名器。\DocRef{P1, P2}}
+\Topic{B：外部内容与智能体语义}{恶意内容源、模型、工具或被污染的记忆可影响智能体对指令、数据和权限的判断，
+使其生成越权计划或不当调用。即使输入来自已认证主体，也不能因此将其视为用户授权。
+提示注入检测不能作为唯一执行屏障。\DocRef{P3, S4}}
+\Topic{核验要求}{可信交互面须由非智能体逻辑实现，确认内容与签名请求应保持绑定；开放授权中的既有值不能被关闭授权改写；
+约束必须由确定性代码核验，未知约束按失败处理。
+核验器本身若被控制，其保护结论不再成立。\DocRef{P1, P2}}
+\Source{AP2 规范、授权与安全考虑 [P1--P3]；OWASP 提示注入说明 [S4]}
+
+\clearpage
+\PageTitle{06}{D / E 类风险}{凭证关联正确，还需要交易状态正确}
+\textbf{密码学绑定回答“谁授权了哪些内容”；状态控制回答“该授权当前是否仍可使用”。}
+前者不自动保证跨请求、跨节点和跨时间的一致执行。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,6.4);
+\node[heading] at (.2,6.05) {D\quad 授权链与交易关联};
+\node[safe,text width=3.05cm,minimum height=1.1cm] (open) at (2.1,4.6) {开放授权\\约束与授权来源};
+\node[role,text width=3.05cm,minimum height=1.1cm] (closed) at (8.6,4.6) {对应的关闭授权\\绑定私钥签署};
+\node[role,text width=3.05cm,minimum height=1.1cm] (checkout) at (15.1,4.6) {商户签署的结账对象\\Checkout JWT};
+\draw[proof] (closed)--(open) node[midway,above,tag] {\Code{sd\_hash}};
+\draw[proof] (closed)--(checkout) node[midway,above,tag] {\Code{checkout\_hash}};
+\node[box,text width=3.05cm] (key) at (2.1,2.0) {获授权 Agent 公钥};
+\node[box,text width=3.05cm] (receipt) at (8.6,2.0) {核验方签署的回执};
+\node[box,text width=3.05cm] (token) at (15.1,2.0) {支付凭据 / token};
+\draw[proof] (open)--(key) node[midway,right,tag] {\Code{cnf}};
+\draw[proof] (receipt)--(closed) node[midway,right,tag] {\Code{reference}};
+\draw[proof,dashed] (token)--(checkout) node[midway,right,tag] {适用范围};
+\draw[proof,dashed] (key.east)--(5.1,2.0)--(5.1,3.45)--(6.5,3.45)--(closed.south west);
+\node[tag] at (5.1,3.45) {验证签名};
+\node[small,text width=16.4cm,text=muted] at (8.6,.5)
+ {实线：声明中的关联\qquad 虚线：需要执行的核验关系};
+\end{tikzpicture}
+\FigureCaption{fig:bindings}{凭证关联的抽象结构。结账授权与支付授权分别建链；支付授权经 \Code{transaction\_id} 中的结账哈希关联交易，回执关联对应授权。支付凭据的具体范围绑定取决于支付方式。}
+\end{center}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,3.65);
+\node[heading] at (.2,3.3) {E\quad 请求、执行与结果的状态约束};
+\node[safe,text width=2.6cm] (ready) at (1.8,2.2) {授权有效 / 条件满足};
+\node[role,text width=2.65cm] (pending) at (7.7,2.2) {已提交 / 执行状态未定};
+\node[safe,text width=2.65cm] (done) at (15.1,2.2) {结果已核验 / 状态更新};
+\draw[proof] (ready)--(pending) node[midway,above,tag] {检查并记录};
+\draw[proof] (pending)--(done) node[midway,above,tag] {可信结果与回执};
+\node[danger,text width=3.3cm,minimum height=.65cm] (query) at (7.7,.55) {先查证执行状态};
+\draw[attack] (pending.south)--(query.north) node[midway,left,tag] {超时 / 重试};
+\draw[proof] (query.east)--(15.1,.55)--(done.south);
+\node[tag] at (12.1,.55) {取得可信结果};
+\end{tikzpicture}
+\FigureCaption{fig:state}{状态核验的分析模型，不是 AP2 统一规定的状态机。并发控制、去重范围、撤销与异常恢复需在具体部署中明确。}
+\end{center}
+
+\Topic{D：凭证与密码学绑定}{风险包括链拼接、上下文替换、算法或类型混淆、解析不一致、密钥泄露、
+随机性不足与凭据滥用。应验证密钥来源、签名算法、凭证类型、关联哈希、约束及适用范围；
+哈希计算必须使用一致的表示，隐私相关摘要需满足相应熵要求。\DocRef{P2, P3, P5, S2, S3}}
+\Topic{E：状态与生命周期}{重放、并发、状态回滚、回执伪造或延迟，可能使同一授权产生重叠执行。
+AP2 对重叠关闭授权及回执完整性已有要求；去重、原子更新、撤销、过期与后续交易状态仍需落实到具体实现。
+开放授权不能仅凭名称被视为一次性令牌。\DocRef{P1, P3}}
+\Note{核验时应分别统计凭据重复签发、并存有效凭据与实际支付效果，不能将三者直接等同。
+结果不确定时应进入查证或中止流程，不能自动扩大授权或跳过校验。}
+\Source{AP2 规范、授权、安全和实现考虑 [P1--P3, P5]；SD-JWT 与 JWT 建议 [S2, S3]}
+
+\clearpage
+\PageTitle{07}{F / G 类风险}{隐私与执行环境决定协议之外的暴露面}
+\textbf{单个主体获得必要信息，不意味着多个主体合并信息后仍只知道必要内容。}
+同样，凭证格式正确，也不意味着处理凭证的模型、工具、密钥服务与宿主环境可信。
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+\path[use as bounding box] (0,0) rectangle (17.2,10.6);
+\node[heading] at (.2,10.2) {F\quad 分散视图与联合观察};
+\node[role,text width=3.8cm] (v1) at (2.5,8.95) {$V_1$：身份相关字段子集};
+\node[role,text width=3.8cm] (v2) at (8.6,8.95) {$V_2$：交易相关字段子集};
+\node[role,text width=3.8cm] (v3) at (14.7,8.95) {$V_3$：交互元数据子集};
+\node[danger,text width=4.1cm] (union) at (8.6,7.05) {联合视图 $\displaystyle\bigcup_i V_i$};
+\draw[observe] (v1.south)--(2.5,7.05)--(union.west);
+\draw[observe] (v2)--(union);
+\draw[observe] (v3.south)--(14.7,7.05)--(union.east);
+\node[small,text width=16cm,text=risk] at (8.6,6.05)
+ {共同标识、交易关联或时序特征可扩大可关联性与推断能力；其程度取决于实际可见字段。};
+\draw[draw=line] (.25,5.55)--(16.95,5.55);
+\node[heading] at (.2,5.1) {G\quad 执行边界与部署依赖};
+\node[danger,text width=3.25cm,minimum height=1.85cm] (services) at (2.1,3.55)
+ {外部依赖\\[4pt]模型 / 工具 / 事件\\受托智能体};
+\draw[boundary,fill=greenwash!40] (5.25,2.15) rectangle (17.0,4.55);
+\node[small,text=teal] at (11.1,4.23) {权限、数据与状态应具有独立的保护边界};
+\node[role,minimum width=0pt,text width=2.45cm] (runtime) at (7.0,3.2) {Agent 运行时};
+\node[safe,text width=2.45cm] (validator) at (11.15,3.2) {确定性核验器};
+\node[safe,text width=2.45cm] (limited) at (15.3,3.2) {受限执行接口};
+\draw[attack] (services.east)--(runtime.west);
+\draw[arrow] (runtime)--(validator);\draw[proof] (validator)--(limited);
+\node[box,fill=graywash,text width=16cm,minimum height=.95cm] (infra) at (8.6,.85)
+ {密钥与身份服务\quad /\quad 状态与回执存储\quad /\quad 网关与宿主\quad /\quad 构建与配置来源};
+\draw[draw=line,dashed] (8.6,1.35)--(8.6,1.75)--(15.3,1.75)--(15.3,2.15);
+\draw[draw=line,dashed] (8.6,1.75)--(7.0,1.75)--(7.0,2.15);
+\end{tikzpicture}
+\FigureCaption{fig:privacy-runtime}{隐私关联与执行依赖的两层分析。上半图表示一般的数据视图，不规定各角色必须接收哪些字段；下半图表示待落实的隔离要求，不假定基础设施天然可信。}
+\end{center}
+
+\Topic{F：隐私与跨方关联}{被动风险包括偏好推断、身份与交易关联、长期画像及跨会话追踪；
+主动风险还包括诱导额外披露与操纵查询以收集信息。
+需限定字段、用途、留存与共享边界，并按联合对手评估视图。
+SD-JWT 的选择性披露不等同于一般意义上的不可关联性。\DocRef{P3, S2}}
+\Topic{G：工具、运行时与基础设施}{恶意工具、被替换的依赖、过宽权限及失陷宿主可能绕过上层授权边界；
+资源耗尽还可能诱发不安全降级。
+应控制调用身份、目的端与权限范围，保证委派不扩大上游授权，隔离密钥和敏感状态，核对依赖来源，并限制调用和重试资源。\DocRef{P2, P5, S5}}
+\Topic{共同边界}{密码学机制不能阻止已被攻陷的端点在其可读范围内泄露信息，
+也不能代替执行端履行授权检查。故障恢复、权限收缩和证据保存，应保持原有约束而不引入自动绕过。}
+\Source{AP2 授权、隐私与实现考虑 [P2, P3, P5]；SD-JWT 和 MCP 安全建议 [S2, S5]}
+
+\clearpage
+\PageTitle{08}{分类总表}{按安全边界归纳，按对象与条件核验}
+表~\ref{tab:summary} 汇总前文的七类风险。类别是本文的分析分组，并非 AP2 官方分类；
+同一攻击链可跨越多个类别。\textbf{主动列描述可能的干预机制，被动列描述给定观察条件下的信息风险，均不表示必然成功。}
+
+\vspace{4pt}
+\begingroup
+\fontsize{9.7}{14.2}\selectfont
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.13}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}
+                    >{\raggedright\arraybackslash}p{4.0cm}
+                    >{\raggedright\arraybackslash}p{3.7cm}
+                    >{\raggedright\arraybackslash}p{5.8cm}@{}}
+\toprule[1pt]
+\textcolor{teal}{\textbf{类别与主要对象}} & \textcolor{teal}{\textbf{主动攻击机制}} &
+\textcolor{teal}{\textbf{被动观察风险}} & \textcolor{teal}{\textbf{关键保护与验证}} \\
+\midrule
+\textbf{A\quad 授权与意图}\newline
+TS、签名器、Agent\newline 授权交互路径
+& 授权替换；确认欺骗；身份混淆；约束遗漏与越权
+& 偏好、意图与授权范围暴露；身份关联
+& 核对要求、展示、签署与执行的一致性；保护根签名器；明确约束表达边界 \\[7pt]
+\midrule
+\textbf{B\quad 智能体语义}\newline
+内容、模型、工具\newline 记忆及输入路径
+& 提示注入；工具返回误导；记忆污染；指令与数据混淆
+& 上下文、计划和记忆中的任务信息暴露
+& 输入不得授予权限；候选行动经独立确定性核验；未知约束失败 \\[7pt]
+\midrule
+\textbf{C\quad 传输与会话}\newline
+传输路径、代理\newline 连接与会话
+& 身份冒用与降级；插入、重放、阻断、延迟与重排
+& 未保护明文；残留端点、长度与时序信息
+& 认证与通道保护；明确加密终点；补足应用层新鲜性和去重 \\[7pt]
+\midrule
+\textbf{D\quad 凭证与绑定}\newline
+签发方、核验方\newline 凭证、密钥与回执
+& 链拼接与上下文替换；算法、类型和解析混淆；凭据滥用
+& 披露字段、低熵摘要与凭证标识造成泄露或关联
+& 核对签名、链、类型、哈希、约束与范围；统一编码；保护密钥和随机性 \\[7pt]
+\midrule
+\textbf{E\quad 状态与生命周期}\newline
+Agent、CP、MPP\newline 状态与结果路径
+& 重放与并发重叠；回滚；回执伪造或压制；生命周期绕过
+& 历史状态、时间与回执记录形成长期关联
+& 原子更新与去重；核验回执；查证未定结果；落实过期、撤销与后续状态 \\[7pt]
+\midrule
+\textbf{F\quad 隐私与关联}\newline
+持有数据的节点\newline 多路径联合观察
+& 额外披露诱导；查询操纵；跨方收集与串谋
+& 联合视图关联；画像与偏好推断；跨会话追踪
+& 最小披露、用途和留存限制；评估联合视图；不预设不可关联性 \\[7pt]
+\midrule
+\textbf{G\quad 执行与基础设施}\newline
+工具与部署依赖\newline 调用与配置路径
+& 权限滥用；依赖与事件投毒；资源耗尽；降级绕过
+& 宿主、工具和日志中的内容及访问行为暴露
+& 最小权限与隔离；核对目的端和依赖来源；限制资源；故障不放宽授权 \\[3pt]
+\bottomrule[1pt]
+\end{tabular}
+\endgroup
+\par\vspace{3pt}
+\begin{minipage}{\linewidth}
+\captionof{table}{七类风险的总览。对象、主动 / 被动能力与观察条件共同限定每一项分析结论。}\label{tab:summary}
+\end{minipage}
+
+\vspace{7pt}
+\Topic{使用顺序}{先确定具体 node 或 transpath，再标明主动 / 被动、可见信息、控制权限和仍可信的组件，
+最后对应上述类别。分类索引不能替代攻击前提、受损属性与成功判据。}
+\Note{总表综合前文 [P1--P5, S1--S5]。它用于组织威胁分析，不构成漏洞穷尽证明，也不表示某一部署已存在全部所列问题。}
+
+\clearpage
+\PageTitle{09}{依据与适用范围}{协议事实、分析推导与部署要求分别表述}
+\Topic{版本范围}{协议事实以本项目仓库的 v0.2 文档为准。
+后续协议或实现变更需要重新核对角色、凭证、字段及核验规则。}
+
+\Topic{证据层次}{协议规范说明已有机制与规定责任；标准和安全指南补充通用的密码、传输与智能体风险。
+对象图、观察条件 O1--O4、类别 A--G 以及状态核验图是本文的分析组织方式。
+隔离、状态原子性、数据治理等要求需由部署实现，不能从协议格式直接推断其已满足。}
+
+\vspace{7pt}
+{\bfseries\color{teal}AP2 协议与实现资料\par}
+\begingroup\fontsize{10}{14.4}\selectfont
+\Topic{[P1]}{\Link{https://github.com/iXanadu13/AP2/blob/019561ad8138d869da43d18e932f2edc155c48c9/docs/ap2/specification.md}{AP2 Specification}。
+角色、可信交互面、用户不在场流程与各方验证责任。}
+\Topic{[P2]}{\Link{https://github.com/iXanadu13/AP2/blob/019561ad8138d869da43d18e932f2edc155c48c9/docs/ap2/agent_authorization.md}{Agent Authorization}。
+授权来源、开放 / 关闭授权、密钥绑定、约束核验与签署回执。}
+\Topic{[P3]}{\Link{https://github.com/iXanadu13/AP2/blob/019561ad8138d869da43d18e932f2edc155c48c9/docs/ap2/security_and_privacy_considerations.md}{Security and Privacy Considerations}。
+交易绑定、恶意智能体、凭据保护、重叠授权与选择性披露。}
+\Topic{[P4]}{\Link{https://github.com/iXanadu13/AP2/blob/019561ad8138d869da43d18e932f2edc155c48c9/docs/ap2/flows.md}{AP2 Flows}。
+授权、结账、凭据发放、支付及回执的参与关系。}
+\Topic{[P5]}{\Link{https://github.com/iXanadu13/AP2/blob/019561ad8138d869da43d18e932f2edc155c48c9/docs/ap2/implementation_considerations.md}{Implementation Considerations}。
+实现职责、签名与哈希表示、状态管理及部署相关考虑。}
+\endgroup
+
+\vspace{8pt}
+{\bfseries\color{teal}通用标准与安全指南\par}
+\begingroup\fontsize{10}{14.4}\selectfont
+\Topic{[S1]}{IETF，\Link{https://www.rfc-editor.org/rfc/rfc8446.html}{RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3}，2018。
+传输保护、流量分析边界与重放相关考虑。}
+\Topic{[S2]}{IETF，\Link{https://www.rfc-editor.org/rfc/rfc9901.html}{RFC 9901: Selective Disclosure for JSON Web Tokens}，2025。
+选择性披露、密钥绑定、摘要盐值及可关联性边界。}
+\Topic{[S3]}{IETF，\Link{https://www.rfc-editor.org/rfc/rfc8725.html}{RFC 8725: JSON Web Token Best Current Practices}，2020。
+算法、签发方、受众、类型与验证规则。}
+\Topic{[S4]}{OWASP，\Link{https://genai.owasp.org/llmrisk/llm01-prompt-injection/}{LLM01: Prompt Injection}。
+提示注入、权限限制与防护边界；访问日期：2026-11-01。}
+\Topic{[S5]}{Model Context Protocol，\Link{https://modelcontextprotocol.io/docs/2025-11-25/tutorials/security/security_best_practices}{Security Best Practices}，2025-11-25 文档路径。
+工具授权、令牌使用、会话与运行环境风险；访问日期：2026-11-01。}
+\endgroup
+
+\vspace{8pt}
+\Note{验证边界：实际安全结论需补充部署拓扑、实现检查及具有明确成功判据的验证证据。
+本文未将概念性威胁机制表述为已确认漏洞或已测得的攻击效果。}
+\end{document}
